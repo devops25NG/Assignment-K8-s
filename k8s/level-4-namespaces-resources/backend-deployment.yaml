@@ -14,6 +14,15 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command: ['sh', '-c', 'until pg_isready -h $DB_HOST -U $DB_USER -d $DB_NAME; do echo waiting for database; sleep 2; done;']
+          envFrom:
+            - configMapRef:
+                name: kubecoin-config
+            - secretRef:
+                name: kubecoin-secrets
       containers:
         - name: backend
           image: artisantek/kubecoin-backend:1.0
