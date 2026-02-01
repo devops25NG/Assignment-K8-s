@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: dev
+  labels:
+    module: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: frontend
+  template:
+    metadata: 
+      name: frontend
+      labels:
+        module: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: artisantek/kubecoin-frontend:1.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BACKEND_URL
+              value: "http://backend-svc.default.svc.cluster.local:5000"

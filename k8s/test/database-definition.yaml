@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: test
+  labels: 
+    module: db-postgres
+spec: 
+  replicas: 1
+  selector: 
+    matchLabels: 
+      module: db-postgres
+  template: 
+    metadata: 
+      name: postgres
+      labels: 
+        module: db-postgres
+    spec:
+      containers: 
+        - name: postgres
+          image: postgres:18.1-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+            - name: POSTGRES_DB
+              value: "kubecoin"

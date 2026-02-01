@@ -2,17 +2,19 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: prod
   labels:
-    app: backend
-spec:
+   module: backend
+spec: 
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
-      app: backend
-  template:
-    metadata:
+      module: backend
+  template: 
+    metadata: 
+      name: backend
       labels:
-        app: backend
+        module: backend
     spec:
       containers:
         - name: backend
@@ -21,7 +23,7 @@ spec:
             - containerPort: 5000
           env:
             - name: DB_HOST
-              value: "postgres-headless"  # Use headless service for StatefulSet
+              value: "database-svc"
             - name: DB_NAME
               value: "kubecoin"
             - name: DB_USER

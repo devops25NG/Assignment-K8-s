@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: dev
+  labels:
+   module: backend
+spec: 
+  replicas: 1
+  selector: 
+    matchLabels:
+      module: backend
+  template: 
+    metadata: 
+      name: backend
+      labels:
+        module: backend
+    spec:
+      containers:
+        - name: backend
+          image: artisantek/kubecoin-backend:1.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: "database-svc"
+            - name: DB_NAME
+              value: "kubecoin"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "password"
