@@ -15,38 +15,6 @@ spec:
       labels:
         module: db-postgres
     spec:
-
-      # 🔹 INIT CONTAINER
-      initContainers:
-        - name: init-db
-          image: postgres:18.1-alpine
-          env:
-            - name: PGPASSWORD
-              value: "password"
-          command:
-            - sh
-            - -c
-            - |
-              echo "Waiting for PostgreSQL to be ready..."
-              until pg_isready -h database-svc -p 5432 -U postgres; do
-                sleep 2
-              done
-
-              echo "PostgreSQL is ready. Initializing database..."
-
-              psql -h postgres -U postgres -d kubecoin <<EOF
-              CREATE TABLE IF NOT EXISTS wallets (
-                  id VARCHAR(255) PRIMARY KEY,
-                  balance DECIMAL(15, 2) DEFAULT 1000.00,
-                  coins DECIMAL(15, 2) DEFAULT 0.00,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-              );
-
-              CREATE INDEX IF NOT EXISTS idx_wallets_id ON wallets(id);
-              EOF
-
-      # 🔹 MAIN POSTGRES CONTAINER
       containers:
         - name: postgres
           image: postgres:18.1-alpine
@@ -59,3 +27,10 @@ spec:
               value: "password"
             - name: POSTGRES_DB
               value: "kubecoin"
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-sql
+          configMap:
+            name: postgres-init-sql
