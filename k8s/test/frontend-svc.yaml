@@ -8,6 +8,6 @@ spec:
   ports:
     - targetPort: 8080
       port: 8080
-      nodePort: 30143
+      nodePort: 30145
   selector:
     module: frontend     
