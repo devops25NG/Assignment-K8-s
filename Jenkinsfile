@@ -14,6 +14,7 @@ pipeline {
                 branch 'dev'
             }
             steps {
+                /* groovylint-disable-next-line GStringExpressionWithinString */
                 sh '''
                   echo "DEV branch detected"
                   echo "Deploying Kubernetes manifests from k8s/dev"
@@ -27,6 +28,7 @@ pipeline {
                 branch 'test'
             }
             steps {
+                /* groovylint-disable-next-line GStringExpressionWithinString */
                 sh '''
                   echo "TEST branch detected"
                   echo "Deploying Kubernetes manifests from k8s/test"
@@ -40,6 +42,7 @@ pipeline {
                 branch 'prod'
             }
             steps {
+                /* groovylint-disable-next-line GStringExpressionWithinString */
                 sh '''
                   echo "PROD branch detected"
                   echo "Deploying Kubernetes manifests from k8s/prod"
