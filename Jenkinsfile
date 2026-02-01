@@ -58,37 +58,34 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                sh """
-          docker push $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE}
-          docker push $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE}
-        """
+                sh '''
+                  echo "TEST branch detected"
+                  echo "Deploying Kubernetes manifests from k8s/test"
+                  kubectl apply -f ${WORKSPACE}/k8s/test/
+                '''
             }
         }
 
-        stage('Approve Production') {
-            when { branch 'main' }
+        stage('Deploy PROD') {
+            when {
+                branch 'prod'
+            }
             steps {
-                input message: "Approve deployment of ${K8S_NAMESPACE} to PRODUCTION?"
+                sh '''
+                  echo "PROD branch detected"
+                  echo "Deploying Kubernetes manifests from k8s/prod"
+                  kubectl apply -f ${WORKSPACE}/k8s/prod/
+                '''
             }
         }
+    }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh """
-        kubectl apply -f k8s/${K8S_NAMESPACE}/
-
-      kubectl set image deployment/frontend \
-        frontend=$DOCKER_USER/kubecoin-frontend:${K8S_NAMESPACE} \
-        -n ${K8S_NAMESPACE}
-
-      kubectl set image deployment/backend \
-        backend=$DOCKER_USER/kubecoin-backend:${K8S_NAMESPACE} \
-        -n ${K8S_NAMESPACE}
-
-      kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
-      kubectl rollout status deployment/backend -n ${K8S_NAMESPACE}
-        """
-            }
+    post {
+        success {
+            echo "Deployment completed for branch: ${BRANCH_NAME}"
+        }
+        failure {
+            echo "Deployment failed for branch: ${BRANCH_NAME}"
         }
     }
 }
