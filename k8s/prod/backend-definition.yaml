@@ -3,19 +3,33 @@ kind: Deployment
 metadata:
   name: backend
   namespace: prod
-  labels:
-   module: backend
-spec: 
+spec:
   replicas: 1
-  selector: 
+  selector:
     matchLabels:
       module: backend
-  template: 
-    metadata: 
-      name: backend
+  template:
+    metadata:
       labels:
         module: backend
     spec:
+
+      initContainers:
+        - name: wait-for-db
+          image: postgres:18.1-alpine
+          env:
+            - name: PGPASSWORD
+              value: "password"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for database..."
+              until pg_isready -h database-svc -p 5432 -U postgres; do
+                sleep 2
+              done
+              echo "Database is ready."
+
       containers:
         - name: backend
           image: artisantek/kubecoin-backend:1.0

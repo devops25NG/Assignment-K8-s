@@ -28,7 +28,7 @@ spec:
             - -c
             - |
               echo "Waiting for PostgreSQL to be ready..."
-              until pg_isready -h postgres -p 5432 -U postgres; do
+              until pg_isready -h database-svc -p 5432 -U postgres; do
                 sleep 2
               done
 
