@@ -39,7 +39,7 @@ pipeline {
 
         stage('Deploy PROD') {
             when {
-                branch 'prod'
+                branch 'main'
             }
             steps {
                 /* groovylint-disable-next-line GStringExpressionWithinString */
