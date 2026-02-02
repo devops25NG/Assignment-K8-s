@@ -82,25 +82,7 @@ pipeline {
     stage('Deploy to Kubernetes') {
       steps {
         sh """
-          set -e
-
-      echo "Applying manifests for branch: ${BRANCH_NAME}"
-
-      # 1️⃣ Apply manifests (namespace comes from YAML)
       kubectl apply -f k8s/${BRANCH_NAME}/
-
-      # 2️⃣ Update images explicitly (force correct tag)
-      kubectl set image deployment/kubecoin-frontend \
-        kubecoin-frontend=$DOCKER_USER/kubecoin-frontend:$IMAGE_TAG \
-        -n ${BRANCH_NAME}
-
-      kubectl set image deployment/kubecoin-backend \
-        kubecoin-backend=$DOCKER_USER/kubecoin-backend:$IMAGE_TAG \
-        -n ${BRANCH_NAME}
-
-      # 3️⃣ Verify rollout
-      kubectl rollout status deployment/kubecoin-frontend -n ${BRANCH_NAME}
-      kubectl rollout status deployment/kubecoin-backend -n ${BRANCH_NAME}
         """
       }
     }
