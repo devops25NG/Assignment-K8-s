@@ -24,11 +24,20 @@ pipeline {
 
         stage('Set Environment Namespace') {
             steps {
+<<<<<<< HEAD
                 script {
                     /* groovylint-disable-next-line NoDef, VariableTypeRequired */
                     def namespaceMap = ['main': 'prod', 'dev': 'dev', 'test': 'test']
                     env.K8S_NAMESPACE = namespaceMap[env.BRANCH_NAME] ?: error("Unsupported branch: ${env.BRANCH_NAME}")
                 }
+=======
+                /* groovylint-disable-next-line GStringExpressionWithinString */
+                sh '''
+                  echo "DEV branch detected"
+                  echo "Deploying Kubernetes manifests from k8s/dev"
+                  kubectl apply -f ${WORKSPACE}/k8s/dev/
+                '''
+>>>>>>> f2a104a90e1ea3be5de614a7ba15e8bc8d54c38c
             }
         }
 
@@ -58,6 +67,7 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
+                /* groovylint-disable-next-line GStringExpressionWithinString */
                 sh '''
                   echo "TEST branch detected"
                   echo "Deploying Kubernetes manifests from k8s/test"
@@ -71,6 +81,7 @@ pipeline {
                 branch 'main'
             }
             steps {
+                /* groovylint-disable-next-line GStringExpressionWithinString */
                 sh '''
                   echo "PROD branch detected"
                   echo "Deploying Kubernetes manifests from k8s/prod"
