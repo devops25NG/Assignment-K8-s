@@ -82,7 +82,7 @@ pipeline {
     stage('Deploy to Kubernetes') {
       steps {
         sh """
-      kubectl apply -f k8s/${BRANCH_NAME}/
+        kubectl apply -f k8s/${K8S_NAMESPACE}/
         """
       }
     }
