@@ -8,7 +8,6 @@ pipeline {
     FRONTEND_IMAGE = "kubecoin-frontend"
     BACKEND_IMAGE  = "kubecoin-backend"
 
-    ENV_NAME  = "${env.BRANCH_NAME}"
     IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
   }
 
@@ -21,6 +20,22 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
+      }
+    }
+
+    stage('Set Environment Namespace') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            env.K8S_NAMESPACE = 'prod'
+          } else if (env.BRANCH_NAME == 'dev') {
+            env.K8S_NAMESPACE = 'dev'
+          } else if (env.BRANCH_NAME == 'test') {
+            env.K8S_NAMESPACE = 'test'
+          } else {
+            error "Unsupported branch: ${env.BRANCH_NAME}"
+          }
+        }
       }
     }
 
@@ -69,11 +84,11 @@ pipeline {
         sh """
           kubectl set image deployment/kubecoin-frontend \
             kubecoin-frontend=$DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG \
-            -n $ENV_NAME
+            -n $K8S_NAMESPACE
 
           kubectl set image deployment/kubecoin-backend \
             kubecoin-backend=$DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG \
-            -n $ENV_NAME
+            -n $K8S_NAMESPACE
         """
       }
     }
