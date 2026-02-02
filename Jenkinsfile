@@ -7,8 +7,7 @@ pipeline {
 
         FRONTEND_IMAGE = 'kubecoin-frontend'
         BACKEND_IMAGE  = 'kubecoin-backend'
-
-        
+   
     }
 
     triggers {
@@ -24,20 +23,11 @@ pipeline {
 
         stage('Set Environment Namespace') {
             steps {
-<<<<<<< HEAD
                 script {
                     /* groovylint-disable-next-line NoDef, VariableTypeRequired */
                     def namespaceMap = ['main': 'prod', 'dev': 'dev', 'test': 'test']
                     env.K8S_NAMESPACE = namespaceMap[env.BRANCH_NAME] ?: error("Unsupported branch: ${env.BRANCH_NAME}")
                 }
-=======
-                /* groovylint-disable-next-line GStringExpressionWithinString */
-                sh '''
-                  echo "DEV branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/dev"
-                  kubectl apply -f ${WORKSPACE}/k8s/dev/
-                '''
->>>>>>> f2a104a90e1ea3be5de614a7ba15e8bc8d54c38c
             }
         }
 
@@ -67,36 +57,37 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                /* groovylint-disable-next-line GStringExpressionWithinString */
-                sh '''
-                  echo "TEST branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/test"
-                  kubectl apply -f ${WORKSPACE}/k8s/test/
-                '''
+                sh """
+          docker push $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE}
+          docker push $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE}
+        """
             }
         }
 
-        stage('Deploy PROD') {
-            when {
-                branch 'main'
-            }
+        stage('Approve Production') {
+            when { branch 'main' }
             steps {
-                /* groovylint-disable-next-line GStringExpressionWithinString */
-                sh '''
-                  echo "PROD branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/prod"
-                  kubectl apply -f ${WORKSPACE}/k8s/prod/
-                '''
+                input message: "Approve deployment of ${K8S_NAMESPACE} to PRODUCTION?"
             }
         }
-    }
 
-    post {
-        success {
-            echo "Deployment completed for branch: ${BRANCH_NAME}"
-        }
-        failure {
-            echo "Deployment failed for branch: ${BRANCH_NAME}"
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+        kubectl apply -f k8s/${K8S_NAMESPACE}/
+
+      kubectl set image deployment/frontend \
+        frontend=$DOCKER_USER/kubecoin-frontend:${K8S_NAMESPACE} \
+        -n ${K8S_NAMESPACE}
+
+      kubectl set image deployment/backend \
+        backend=$DOCKER_USER/kubecoin-backend:${K8S_NAMESPACE} \
+        -n ${K8S_NAMESPACE}
+
+      kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
+      kubectl rollout status deployment/backend -n ${K8S_NAMESPACE}
+        """
+            }
         }
     }
 }
