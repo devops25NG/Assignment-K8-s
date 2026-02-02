@@ -1,12 +1,14 @@
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: compute-quota
+  name: kubecoin-quota
   namespace: dev
 spec:
   hard:
-    requests.cpu: "1"
-    requests.memory: 2Gi
-    limits.cpu: "2"
-    limits.memory: 4Gi
-    pods: "5"
+    requests.cpu: "500m"      # 25% of Node 2/3 capacity
+    requests.memory: "512Mi"  # Fits your current low usage
+    limits.cpu: "1000m"       # Allows burst to 1 core
+    limits.memory: "1Gi"      # Conservative memory cap
+    pods: "10"                # Frontend(3)+Backend(3)+DB(1)+misc
+    services: "5"
+    configmaps: "5"
