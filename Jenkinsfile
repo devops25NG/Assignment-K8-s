@@ -25,15 +25,9 @@ pipeline {
         stage('Set Environment Namespace') {
             steps {
                 script {
-                    if (env.BRANCH_NAME == 'main') {
-                        env.K8S_NAMESPACE = 'prod'
-          } else if (env.BRANCH_NAME == 'dev') {
-                        env.K8S_NAMESPACE = 'dev'
-          } else if (env.BRANCH_NAME == 'test') {
-                        env.K8S_NAMESPACE = 'test'
-          } else {
-                        error "Unsupported branch: ${env.BRANCH_NAME}"
-                    }
+                    /* groovylint-disable-next-line NoDef, VariableTypeRequired */
+                    def namespaceMap = ['main': 'prod', 'dev': 'dev', 'test': 'test']
+                    env.K8S_NAMESPACE = namespaceMap[env.BRANCH_NAME] ?: error("Unsupported branch: ${env.BRANCH_NAME}")
                 }
             }
         }
