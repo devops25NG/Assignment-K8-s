@@ -1,60 +1,108 @@
 pipeline {
-    agent { label 'docker-host'}
+  agent any
 
-    stages {
+  environment {
+    // DockerHub
+    DOCKER_USER = "usernamenarendra"
+    DOCKER_CRED = "dockerhub-creds"
 
-        stage('Checkout Repository') {
-            steps {
-                checkout scm
-            }
-        }
+    // Image names
+    FRONTEND_IMAGE = "kubecoin-frontend"
+    BACKEND_IMAGE  = "kubecoin-backend"
 
-        stage('Deploy DEV') {
-            when {
-                branch 'dev'
-            }
-            steps {
-                sh '''
-                  echo "DEV branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/dev"
-                  kubectl apply -f ${WORKSPACE}/k8s/dev/
-                '''
-            }
-        }
+    // Environment mapping
+    ENV_NAME  = "${env.BRANCH_NAME}"
+    IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+    // Webhook token stored as a Jenkins 'Secret Text' credential. Replace 'webhook-token-id' with your credential id.
+    WEBHOOK_TOKEN = credentials('webhook-token-id')
+  }
 
-        stage('Deploy TEST') {
-            when {
-                branch 'test'
-            }
-            steps {
-                sh '''
-                  echo "TEST branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/test"
-                  kubectl apply -f ${WORKSPACE}/k8s/test/
-                '''
-            }
-        }
+  triggers {
+    // Trigger on GitHub push webhooks (requires 'GitHub plugin')
+    githubPush()
 
-        stage('Deploy PROD') {
-            when {
-                branch 'main'
-            }
-            steps {
-                sh '''
-                  echo "PROD branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/prod"
-                  kubectl apply -f ${WORKSPACE}/k8s/prod/
-                '''
-            }
-        }
+    // Generic webhook trigger (requires 'Generic Webhook Trigger' plugin).
+    // To use: create a secret-text credential 'webhook-token-id' and configure your repo webhook to POST:
+    // JENKINS_URL/generic-webhook-trigger/invoke?token=<token>
+    GenericTrigger(
+      genericVariables: [
+        [key: 'ref', value: '$.ref']
+      ],
+      causeString: 'Triggered on $ref',
+      token: "${WEBHOOK_TOKEN}",
+      printContributedVariables: true,
+      printPostContent: true
+    )
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    post {
-        success {
-            echo "Deployment completed for branch: ${BRANCH_NAME}"
+    stage('Docker Login') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: DOCKER_CRED,
+          usernameVariable: 'DOCKER_USERNAME',
+          passwordVariable: 'DOCKER_PASSWORD'
+        )]) {
+          sh '''
+            echo "$DOCKER_PASSWORD" | docker login \
+              -u "$DOCKER_USERNAME" --password-stdin
+          '''
         }
-        failure {
-            echo "Deployment failed for branch: ${BRANCH_NAME}"
-        }
+      }
     }
+
+    stage('Build Docker Images') {
+      steps {
+        sh """
+          docker build -t $DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG frontend/
+          docker build -t $DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG backend/
+        """
+      }
+    }
+
+    stage('Push Docker Images') {
+      steps {
+        sh """
+          docker push $DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG
+          docker push $DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG
+        """
+      }
+    }
+
+    stage('Approve Production') {
+      when {
+        branch 'prod'
+      }
+      steps {
+        input message: "Approve deployment of ${IMAGE_TAG} to PRODUCTION?"
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh """
+          kubectl set image deployment/kubecoin-frontend \
+            kubecoin-frontend=$DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG \
+            -n $ENV_NAME
+
+          kubectl set image deployment/kubecoin-backend \
+            kubecoin-backend=$DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG \
+            -n $ENV_NAME
+        """
+      }
+    }
+  }
+
+  post {
+    always {
+      sh 'docker logout || true'
+    }
+  }
 }
