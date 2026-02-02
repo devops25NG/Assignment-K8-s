@@ -2,22 +2,19 @@ pipeline {
   agent { label 'docker-host' }
 
   environment {
-    // DockerHub
     DOCKER_USER = "usernamenarendra"
     DOCKER_CRED = "dockerhub-creds"
 
-    // Image names
     FRONTEND_IMAGE = "kubecoin-frontend"
     BACKEND_IMAGE  = "kubecoin-backend"
 
-    // Environment mapping
     ENV_NAME  = "${env.BRANCH_NAME}"
     IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
-    // Webhook token stored as a Jenkins 'Secret Text' credential. Replace 'webhook-token-id' with your credential id.
-    WEBHOOK_TOKEN = credentials('webhook-token-id')
   }
 
-  triggers { githubPush()}
+  triggers {
+    githubPush()
+  }
 
   stages {
 
@@ -61,9 +58,7 @@ pipeline {
     }
 
     stage('Approve Production') {
-      when {
-        branch 'main'
-      }
+      when { branch 'main' }
       steps {
         input message: "Approve deployment of ${IMAGE_TAG} to PRODUCTION?"
       }
