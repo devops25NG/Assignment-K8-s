@@ -1,60 +1,94 @@
 pipeline {
-    agent { label 'docker-host'}
+    agent { label 'docker-host' }
+
+    environment {
+        DOCKER_USER = 'usernamenarendra'
+        DOCKER_CRED = 'dockerhub-creds'
+
+        FRONTEND_IMAGE = 'kubecoin-frontend'
+        BACKEND_IMAGE  = 'kubecoin-backend'
+
+        
+    }
+
+    triggers {
+        githubPush()
+    }
 
     stages {
-
-        stage('Checkout Repository') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Deploy DEV') {
-            when {
-                branch 'dev'
-            }
+        stage('Set Environment Namespace') {
             steps {
-                sh '''
-                  echo "DEV branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/dev"
-                  kubectl apply -f ${WORKSPACE}/k8s/dev/
-                '''
+                script {
+                    /* groovylint-disable-next-line NoDef, VariableTypeRequired */
+                    def namespaceMap = ['main': 'prod', 'dev': 'dev', 'test': 'test']
+                    env.K8S_NAMESPACE = namespaceMap[env.BRANCH_NAME] ?: error("Unsupported branch: ${env.BRANCH_NAME}")
+                }
             }
         }
 
-        stage('Deploy TEST') {
-            when {
-                branch 'test'
-            }
+        stage('Docker Login') {
             steps {
-                sh '''
-                  echo "TEST branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/test"
-                  kubectl apply -f ${WORKSPACE}/k8s/test/
-                '''
+                withCredentials([usernamePassword(
+          credentialsId: DOCKER_CRED,
+          usernameVariable: 'DOCKER_USERNAME',
+          passwordVariable: 'DOCKER_PASSWORD'
+        )]) {
+                    sh '''
+            echo "$DOCKER_PASSWORD" | docker login \
+              -u "$DOCKER_USERNAME" --password-stdin
+          '''
+        }
             }
         }
 
-        stage('Deploy PROD') {
-            when {
-                branch 'main'
-            }
+        stage('Build Docker Images') {
             steps {
-                sh '''
-                  echo "PROD branch detected"
-                  echo "Deploying Kubernetes manifests from k8s/prod"
-                  kubectl apply -f ${WORKSPACE}/k8s/prod/
-                '''
+                sh """
+          docker build -t $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE} frontend/
+          docker build -t $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE} backend/
+        """
             }
         }
-    }
 
-    post {
-        success {
-            echo "Deployment completed for branch: ${BRANCH_NAME}"
+        stage('Push Docker Images') {
+            steps {
+                sh """
+          docker push $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE}
+          docker push $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE}
+        """
+            }
         }
-        failure {
-            echo "Deployment failed for branch: ${BRANCH_NAME}"
+
+        stage('Approve Production') {
+            when { branch 'main' }
+            steps {
+                input message: "Approve deployment of ${K8S_NAMESPACE} to PRODUCTION?"
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh """
+        kubectl apply -f k8s/${K8S_NAMESPACE}/
+
+      kubectl set image deployment/frontend \
+        frontend=$DOCKER_USER/kubecoin-frontend:${K8S_NAMESPACE} \
+        -n ${K8S_NAMESPACE}
+
+      kubectl set image deployment/backend \
+        backend=$DOCKER_USER/kubecoin-backend:${K8S_NAMESPACE} \
+        -n ${K8S_NAMESPACE}
+
+      kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
+      kubectl rollout status deployment/backend -n ${K8S_NAMESPACE}
+        """
+            }
         }
     }
 }
