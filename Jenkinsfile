@@ -17,23 +17,7 @@ pipeline {
     WEBHOOK_TOKEN = credentials('webhook-token-id')
   }
 
-  triggers {
-    // Trigger on GitHub push webhooks (requires 'GitHub plugin')
-    githubPush()
-
-    // Generic webhook trigger (requires 'Generic Webhook Trigger' plugin).
-    // To use: create a secret-text credential 'webhook-token-id' and configure your repo webhook to POST:
-    // JENKINS_URL/generic-webhook-trigger/invoke?token=<token>
-    GenericTrigger(
-      genericVariables: [
-        [key: 'ref', value: '$.ref']
-      ],
-      causeString: 'Triggered on $ref',
-      token: "${WEBHOOK_TOKEN}",
-      printContributedVariables: true,
-      printPostContent: true
-    )
-  }
+  triggers { githubPush()}
 
   stages {
 
