@@ -83,6 +83,17 @@ pipeline {
       steps {
         sh """
         kubectl apply -f k8s/${K8S_NAMESPACE}/
+
+      kubectl set image deployment/frontend \
+        frontend=$DOCKER_USER/kubecoin-frontend:$IMAGE_TAG \
+        -n ${K8S_NAMESPACE}
+
+      kubectl set image deployment/backend \
+        backend=$DOCKER_USER/kubecoin-backend:$IMAGE_TAG \
+        -n ${K8S_NAMESPACE}
+
+      kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
+      kubectl rollout status deployment/backend -n ${K8S_NAMESPACE}
         """
       }
     }
