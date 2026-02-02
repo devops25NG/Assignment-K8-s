@@ -8,7 +8,7 @@ pipeline {
         FRONTEND_IMAGE = 'kubecoin-frontend'
         BACKEND_IMAGE  = 'kubecoin-backend'
 
-        IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+        
     }
 
     triggers {
@@ -50,8 +50,8 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh """
-          docker build -t $DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG frontend/
-          docker build -t $DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG backend/
+          docker build -t $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE} frontend/
+          docker build -t $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE} backend/
         """
             }
         }
@@ -59,8 +59,8 @@ pipeline {
         stage('Push Docker Images') {
             steps {
                 sh """
-          docker push $DOCKER_USER/$FRONTEND_IMAGE:$IMAGE_TAG
-          docker push $DOCKER_USER/$BACKEND_IMAGE:$IMAGE_TAG
+          docker push $DOCKER_USER/$FRONTEND_IMAGE:${K8S_NAMESPACE}
+          docker push $DOCKER_USER/$BACKEND_IMAGE:${K8S_NAMESPACE}
         """
             }
         }
@@ -68,7 +68,7 @@ pipeline {
         stage('Approve Production') {
             when { branch 'main' }
             steps {
-                input message: "Approve deployment of ${IMAGE_TAG} to PRODUCTION?"
+                input message: "Approve deployment of ${K8S_NAMESPACE} to PRODUCTION?"
             }
         }
 
@@ -78,11 +78,11 @@ pipeline {
         kubectl apply -f k8s/${K8S_NAMESPACE}/
 
       kubectl set image deployment/frontend \
-        frontend=$DOCKER_USER/kubecoin-frontend:$IMAGE_TAG \
+        frontend=$DOCKER_USER/kubecoin-frontend:${K8S_NAMESPACE} \
         -n ${K8S_NAMESPACE}
 
       kubectl set image deployment/backend \
-        backend=$DOCKER_USER/kubecoin-backend:$IMAGE_TAG \
+        backend=$DOCKER_USER/kubecoin-backend:${K8S_NAMESPACE} \
         -n ${K8S_NAMESPACE}
 
       kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE}
